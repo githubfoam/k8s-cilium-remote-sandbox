@@ -37,7 +37,7 @@ Vagrant.configure("2") do |config|
 
     config.vm.define "worker01" do |k8scluster|
         k8scluster.vm.box = "bento/ubuntu-19.04"  # OK Kernel: Linux 5.0.0-17-generic
-        # k8scluster.vm.box = "bento/ubuntu-16.04" # NOT OK. minimal supported kernel version is >= 4.8.0;
+        # k8scluster.vm.box = "bento/ubuntu-19.04" # NOT OK. minimal supported kernel version is >= 4.8.0;
         k8scluster.vm.hostname = "worker01"
         k8scluster.vm.network "private_network", ip: "10.217.50.11"
         k8scluster.vm.provider "virtualbox" do |vb|
@@ -65,7 +65,7 @@ Vagrant.configure("2") do |config|
 
       config.vm.define "worker02" do |k8scluster|
           k8scluster.vm.box = "bento/ubuntu-19.04"  # OK Kernel: Linux 5.0.0-17-generic
-          # k8scluster.vm.box = "bento/ubuntu-16.04" # NOT OK. minimal supported kernel version is >= 4.8.0;
+          # k8scluster.vm.box = "bento/ubuntu-19.04" # NOT OK. minimal supported kernel version is >= 4.8.0;
           k8scluster.vm.hostname = "worker02"
           k8scluster.vm.network "private_network", ip: "10.217.50.12"
           k8scluster.vm.provider "virtualbox" do |vb|
