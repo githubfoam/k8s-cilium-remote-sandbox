@@ -1,0 +1,21 @@
+- hosts: remotecontrol01
+  become: yes
+  vars:
+    kubernetes_version : "=1.15.2-00"
+    # kubernetes_version : "=1.17.0-00"
+  tasks:
+  - name: "Add Debian kubectl"
+    include_tasks: bootstrap_debian.yml
+    when: " ansible_os_family == 'Debian' and ansible_distribution in ['Debian','Ubuntu'] "
+
+- hosts: remotecontrol01
+  become: yes
+  vars:
+    kubernetes_version : "-1.15.2-0"
+    # kubernetes_version : "-1.17.0-0" #RedHat formatting
+    # https://www.reddit.com/r/ansible/comments/arlqve/ansible_copy_module_fails_when_selinux_enabled_on/
+    ansible_python_interpreter : "/usr/bin/python"
+  tasks:
+  - name: "Add RedHat kubectl"
+    include_tasks: bootstrap_redhat.yml
+    when: " ansible_os_family == 'RedHat' and ansible_distribution in ['CentOS','Fedora','Scientific'] "

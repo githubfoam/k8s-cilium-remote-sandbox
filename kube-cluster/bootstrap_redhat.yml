@@ -1,0 +1,76 @@
+---
+ # Installing kubeadm
+ # Swap disabled. You MUST disable swap in order for the kubelet to work properly
+ # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#configure-cgroup-driver-used-by-kubelet-on-control-plane-node
+- name: "Remove swapfile from /etc/fstab"
+  mount:
+     name: "{{ item }}"
+     fstype: swap
+     state: absent
+  with_items:
+     - swap
+     - none
+
+- name: "Disable swap"
+  command: swapoff -a
+ # Installing kubeadm, kubelet and kubectl
+ # https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#configure-cgroup-driver-used-by-kubelet-on-control-plane-node
+
+# - name: "add Kubernetes apt-key"
+#   apt_key:
+#     url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+#     state: present
+#
+# - name: "add Kubernetes' APT repository"
+#   apt_repository:
+#    repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+#    state: present
+#    filename: 'kubernetes'
+
+- name: "copy kubernetes.repo "
+  copy:
+     src: /vagrant/kube-cluster/kubernetes.repo.j2
+     dest: /etc/yum.repos.d/kubernetes.repo
+     remote_src: yes
+     owner: root
+     group: root
+
+- name: "Install Kubernetes binaries"
+  package:
+    name: "{{ item }}"
+    state: present
+  with_items:
+      - unzip
+      - tar
+      - socat
+      # - kubectl=1.17.0-0
+      - 'kubectl{{ kubernetes_version }}'
+
+# - name: Install Kubernetes binaries
+#   yum:
+#     force: yes
+#     name: "{{ packages }}"
+#     state: present
+#     update_cache: yes
+#   vars:
+#     packages:
+#       - 'kubectl{{ kubernetes_version }}'
+
+
+- name: "create .kube directory"
+   # become: yes
+  # become_user: vagrant
+  file:
+     path: /home/vagrant/.kube
+     state: directory
+     mode: 0755
+ # copies the /etc/kubernetes/admin.conf file that was generated from kubeadm init
+ # to your non-root user's home directory.This will allow you to use kubectl
+ # to access the newly-created cluster.
+- name: "copy admin.conf to user's kube config"
+  copy:
+     src: /vagrant/admin.conf
+     dest: /home/vagrant/.kube/config
+     remote_src: yes
+     owner: vagrant
+     group: vagrant

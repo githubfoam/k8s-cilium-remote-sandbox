@@ -1,0 +1,48 @@
+- hosts: masters
+  become: yes
+  vars:
+  tasks:
+    - name: Remove swapfile from /etc/fstab
+      mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
+    - name: Disable swap
+      command: swapoff -a
+
+    - name: Initialize the cluster
+      shell: kubeadm init --apiserver-advertise-address="10.217.50.10" --apiserver-cert-extra-sans="10.217.50.10"  --node-name k8s-master01 --pod-network-cidr=10.217.0.0/16 >> cluster_initialized.txt
+      # shell: kubeadm init  --pod-network-cidr=10.217.0.0/16 >> cluster_initialized.txt
+      # shell: kubeadm init   --node-name k8s-master01 --pod-network-cidr=10.217.0.0/16>> cluster_initialized.txt
+      args:
+        chdir: /home/vagrant
+        creates: cluster_initialized.txt
+    - name: create .kube directory
+      # become: yes
+      become_user: vagrant
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        mode: 0755
+    # copies the /etc/kubernetes/admin.conf file that was generated from kubeadm init
+    # to your non-root user's home directory.This will allow you to use kubectl
+    # to access the newly-created cluster.
+    - name: copy admin.conf to user's kube config
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/vagrant/.kube/config
+        remote_src: yes
+        owner: vagrant
+        group: vagrant
+    #  https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/create-cluster-kubeadm/#pod-network
+    - name: Install cilium pod network
+      # become: yes
+      become_user: vagrant
+      # shell: kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/a70459be0084506e4ec919aa1c114638878db11b/Documentation/kube-flannel.yml >> /home/vagrant/pod_network_setup.txt
+      shell: kubectl create -f https://raw.githubusercontent.com/cilium/cilium/v1.5/examples/kubernetes/1.14/cilium.yaml >> pod_network_setup.txt
+      args:
+        chdir: /home/vagrant
+        creates: pod_network_setup.txt
