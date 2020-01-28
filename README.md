@@ -3,10 +3,7 @@ k8s cilium  eBPF microservice API network visibility WAF
 
 
 ~~~~
-
 vagrant up
-
-
 
 vagrant global-status
 id       name            provider   state    directory
@@ -22,6 +19,7 @@ vagrant@remotecontrol01:~$ sudo ansible-playbook -i /vagrant/kube-cluster/hosts 
 vagrant@remotecontrol01:~$ sudo ansible-playbook -i /vagrant/kube-cluster/hosts /vagrant/kube-cluster/2_kube-dependencies.yml
 vagrant@remotecontrol01:~$ sudo ansible-playbook -i /vagrant/kube-cluster/hosts /vagrant/kube-cluster/3_masters.yml
 vagrant@remotecontrol01:~$ sudo ansible-playbook -i /vagrant/kube-cluster/hosts /vagrant/kube-cluster/4_workers.yml
+
 vagrant@remotecontrol01:~$ sudo ansible-playbook -i /vagrant/kube-cluster/hosts /vagrant/kube-cluster/5_clients.yml
 ~~~~
 
@@ -93,21 +91,37 @@ On each of your machines, install Docker. Version 18.06.2 is recommended, but 1.
 https://kubernetes.io/docs/setup/production-environment/container-runtimes/
 
 [WARNING IsDockerSystemdCheck]: detected "cgroupfs" as the Docker cgroup driver. The recommended driver is "systemd". Please follow the guide at https://kubernetes.io/docs/setup/cri/
+~~~~
+Install Helm
+~~~~
+vagrant@k8s-master01:~$ wget https://get.helm.sh/helm-v3.0.2-linux-amd64.tar.gz
+vagrant@k8s-master01:~$ sudo tar -zxvf helm-v3.0.2-linux-amd64.tar.gz
+vagrant@k8s-master01:~$ sudo mv linux-amd64/helm /usr/local/bin/helm
+vagrant@k8s-master01:~$ helm version
+version.BuildInfo{Version:"v3.0.2", GitCommit:"19e47ee3283ae98139d98460de796c1be1e3975f", GitTreeState:"clean", GoVersion:"go1.13.5"}
+~~~~
+the connectivity test
+~~~~
+vagrant@k8s-master01:~$ kubectl apply -f https://raw.githubusercontent.com/cilium/cilium/1.6.5/examples/kubernetes/connectivity-check/connectivity-check.yaml
 
-~~~~
-~~~~
-vagrant@k8s-master01:~$ kubectl get nodes
-NAME           STATUS   ROLES    AGE   VERSION
-k8s-master01   Ready    master   14m   v1.15.2
-worker01       Ready    <none>   11m   v1.15.2
-worker02       Ready    <none>   11m   v1.15.2
-vagrant@k8s-master01:~$ kubectl get pods --all-namespaces
-          1/1     Running   0          48m
+https://docs.cilium.io/en/stable/gettingstarted/k8s-install-default/#k8s-quick-install
 ~~~~
 
-
-~~~~
 How to Secure a Cassandra Database
+~~~~
+
+vagrant@k8s-master01:~$ kubectl get pods -o wide
+NAME                             READY   STATUS             RESTARTS   AGE   IP             NODE       NOMINATED NODE   READINESS GATES
+cass-server-5898ffd7b8-kw6p9     0/1     CrashLoopBackOff   9          28m   10.217.1.87    worker02   <none>           <none>
+empire-hq-69b844cdd6-56ffj       1/1     Running            0          28m   10.217.2.175   worker01   <none>           <none>
+empire-outpost-b6c84d55d-f6v5g   1/1     Running            0          28m   10.217.1.180   worker02   <none>           <none>
+
+journalctl -u kubelet | tail -n 100
+
+vagrant@k8s-master01:~$ kubectl delete -f https://raw.githubusercontent.com/cilium/cilium/1.6.5/examples/kubernetes-cassandra/cass-sw-app.yam
+
+
+
 https://docs.cilium.io/en/stable/gettingstarted/cassandra/#gs-cassandra
 
 Kubernetes will deploy the pods and service in the background.
@@ -116,6 +130,13 @@ deployment.extensions/cass-server created
 service/cassandra-svc created
 deployment.extensions/empire-hq created
 deployment.extensions/empire-outpost created
+
+vagrant@k8s-master01:~$ kubectl delete -f https://raw.githubusercontent.com/cilium/cilium/1.5.5/examples/kubernetes-cassandra/cass-sw-app.yaml
+deployment.extensions "cass-server" deleted
+service "cassandra-svc" deleted
+deployment.extensions "empire-hq" deleted
+deployment.extensions "empire-outpost" deleted
+
 
 
 the progress of the operation
@@ -128,6 +149,7 @@ NAME                                 READY   STATUS              RESTARTS   AGE
 pod/cass-server-5898ffd7b8-pbnr8     0/1     ContainerCreating   0          16s
 pod/empire-hq-69b844cdd6-4cqfn       0/1     ContainerCreating   0          16s
 pod/empire-outpost-b6c84d55d-b24cr   0/1     ContainerCreating   0          16s
+
 $ kubectl get svc,pods
 NAME                    TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)    AGE
 service/cassandra-svc   ClusterIP   None         <none>        9042/TCP   2m21s
