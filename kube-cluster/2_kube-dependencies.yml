@@ -1,0 +1,129 @@
+# - hosts: all
+- hosts: k8scluster
+  become: yes
+  vars:
+    kubernetes_version : "=1.15.2-00"
+    validated_dockerv: "=5:18.09.8~3-0~ubuntu-xenial"
+    # kubernetes_version : "=1.17.0-00"
+    # validated_dockerv: "=5:19.03.4~3-0~ubuntu-xenial"
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+   - name: Remove swapfile from /etc/fstab
+     mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+     with_items:
+        - swap
+        - none
+   - name: Disable swap
+     command: swapoff -a
+    # Install Docker and its dependent components.
+    # [WARNING]: Could not find aptitude. Using apt-get instead fix
+   - name: "APT: Install aptitude package"
+     apt:
+       name: aptitude
+       force_apt_get: yes
+   - name: Install packages that allow apt to be used over HTTPS
+     apt:
+        name: "{{ packages }}"
+        state: present
+        update_cache: yes
+     vars:
+        packages:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - gnupg-agent
+        - software-properties-common
+   - name: Add an apt signing key for Docker
+     apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+   - name: Add apt repository for stable version
+     apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+        state: present
+   - name: Install docker and its dependecies
+     apt:
+      name: "{{ packages }}"
+      state: present
+      update_cache: yes
+     vars:
+      packages:
+      - 'docker-ce{{ validated_dockerv }}'
+      - 'docker-ce-cli{{ validated_dockerv }}'
+      - containerd.io
+
+    # Setup daemon.
+    # https://kubernetes.io/docs/setup/production-environment/container-runtimes/#docker
+   - name: Uploading daemon.json
+     template:
+          src: daemon.json.j2
+          dest: /etc/docker/daemon.json
+          owner: root
+          group: root
+          mode: 0644
+   - name: Create /etc/systemd/system/docker.service.d if it does not exist
+     file:
+        path: /etc/systemd/system/docker.service.d
+        state: directory
+        mode: '0755'
+   # Restart docker.
+   - name: Run systemctl daemon-reload
+     command: systemctl daemon-reload
+   - name: Run systemctl restart docker
+     command: systemctl restart docker
+   - name: Add vagrant user to docker group
+     user:
+      name: vagrant
+      group: docker
+    # Setup daemon.
+    # https://kubernetes.io/docs/setup/production-environment/container-runtimes/#docker
+
+   - name: install APT Transport HTTPS
+     apt:
+       name: apt-transport-https
+       state: present
+
+   - name: add Kubernetes apt-key
+     apt_key:
+       url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+       state: present
+
+   - name: add Kubernetes' APT repository
+     apt_repository:
+      repo: deb http://apt.kubernetes.io/ kubernetes-xenial main
+      state: present
+      filename: 'kubernetes'
+   - name: Install Kubernetes binaries
+     apt:
+      name: "{{ packages }}"
+      state: present
+      update_cache: yes
+     vars:
+      packages:
+        - 'kubelet{{ kubernetes_version }}'
+        - 'kubeadm{{ kubernetes_version }}'
+  handlers:
+  - name: docker status
+    service: name=docker state=started
+
+- hosts: masters
+  become: yes
+  vars:
+    kubernetes_version : "=1.15.2-00"
+    # kubernetes_version : "=1.17.0-00"
+    ansible_python_interpreter: /usr/bin/python3
+  tasks:
+   - name: Install Kubernetes binaries
+     apt:
+      force: yes
+      name: "{{ packages }}"
+      state: present
+      update_cache: yes
+     vars:
+      packages:
+        - 'kubectl{{ kubernetes_version }}'
+   - name: "run apt-mark hold kubectl"
+     command: apt-mark hold kubectl

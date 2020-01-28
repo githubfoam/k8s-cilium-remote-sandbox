@@ -1,0 +1,23 @@
+# https://docs.ansible.com/ansible/latest/network/getting_started/first_inventory.html
+# https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html
+
+# =====LOCAL NOT REMOTE SSH==== ansible_connection=local
+# operations center to remote control other hosts
+[clients]
+remotecontrol01 ansible_host=10.217.50.13 ansible_connection=local
+
+[masters]
+k8s-master01 ansible_host=10.217.50.10 ansible_connection=ssh ansible_ssh_private_key_file=/home/vagrant/.ssh/id_rsa ansible_user=vagrant
+
+[workers]
+worker01 ansible_host=10.217.50.11  ansible_ssh_private_key_file=/home/vagrant/.ssh/id_rsa ansible_connection=ssh ansible_user=vagrant
+worker02 ansible_host=10.217.50.12  ansible_ssh_private_key_file=/home/vagrant/.ssh/id_rsa ansible_connection=ssh ansible_user=vagrant
+
+# https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html
+[k8scluster:children]
+masters
+workers
+
+# only debian based computes
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3

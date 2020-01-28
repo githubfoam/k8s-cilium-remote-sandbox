@@ -1,0 +1,28 @@
+- hosts: localhost
+  become: yes
+  vars:
+    remote_user: "vagrant"
+    users_list:
+    - vagrant
+    server_list:
+    - k8s-master01
+    - worker01
+    - worker02
+  tasks:
+    # locally create user with keys
+    - name: Ensure group sudo exists
+      group:
+        name: sudo
+        state: present
+    - name: "Create user accounts and add users to groups"
+      user:
+        name: "{{ item }}"
+        groups: "sudo"
+        generate_ssh_key: yes
+        ssh_key_type: rsa
+        # echo "devops1badpassword" | mkpasswd --stdin --method=sha-512 --salt="devops1mybadsalt"
+        password: $6$devops1mybadsalt$vPETGtncCxJNPWRbDQ.wf539Ek.5t.GM.VAFtBME6cNEVHkLvxLnfNSuQt8.QZH.gP60Ic7ZAfZNePzOeTkET1
+      with_items: "{{ users_list }}"
+    - name: Copy keys
+      command: ssh-copy-id -i ~"{{ remote_user }}"/.ssh/id_rsa.pub "{{ remote_user }}"@"{{ item }}"
+      with_items: "{{ server_list }}"
